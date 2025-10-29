@@ -1,119 +1,143 @@
-# Ex.No: 10  Implementation of 2D/3D game                                                                            
+# Ex.No: 10  Implementation of 2D/3D game -3D airplane obstacle avoidance game
+### DATE:                                                               
 ### REGISTER NUMBER : 212222240068
-### GAME NAME: Maze Runner AI
 ### AIM: 
-To develop a Unity 3D game where an AI-controlled agent uses reinforcement learning (via Unity ML-Agents) to autonomously navigate through a maze and reach a designated goal, demonstrating basic principles of artificial intelligence in games.
+To develop a 3D airplane obstacle avoidance game in Unity using AI for game-over detection and score management.
 
+ 
 ### Algorithm:
-
-1.Setup Unity ML-Agents:
-
-    Install Unity and ML-Agents Toolkit.
-
-    Create a new 3D project.
-
-    Import ML-Agents package into Unity.
-2.Design the Environment:
-
-    Add a Plane as the ground.
-
-    Create a simple maze using 3D Cubes as walls.
-    Add a Sphere as the goal object.
-
-3.Create the Agent:
-
-    Add a Capsule as the player.
-    Attach Rigidbody and create a C# script MazeAgent.cs.
-    Define observation space, actions, and reward functions.
-
-4.Agent Logic:
-
-    Reward agent for reaching the target.
-
-    Penalize for time consumption or wall collisions.
-
-    Randomize the goal position each episode.
-
-4.Training:
-
-    Configure Behavior Parameters.
-
-    Use Heuristic mode for manual testing.
-
-    Optionally train with mlagents-learn command.
-
-5.Testing & Output:
-
-    Run the game in Unity.
-
-    Observe the agent learning and navigating the maze.
-
-### Program:
-### MazeAgent.cs
 ```
-using Unity.MLAgents;
-using Unity.MLAgents.Actuators;
-using Unity.MLAgents.Sensors;
+Initialize a 3D scene in Unity
+
+Add a plane as the player and create movement scripts
+
+Generate obstacles using prefabs and spawn logic
+
+Implement AI-based collision detection for game over
+
+Add UI elements for score and Game Over panel
+
+Use particle effects and sound on collision
+
+Add skybox, lighting, and materials to enhance visuals
+
+Run and test the game in Unity Editor
+
+
+```  
+### Program:
+playermovement.cs
+```
 using UnityEngine;
 
-public class MazeAgent : Agent
+public class PlayerMovement : MonoBehaviour
 {
-    public Transform target;
-    private Rigidbody agentRb;
+    public float moveSpeed = 10f;
+    public float horizontalSpeed = 5f;
 
-    public override void Initialize()
+    void Update()
     {
-        agentRb = GetComponent<Rigidbody>();
+        transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime);
+
+        float h = Input.GetAxis("Horizontal");
+        transform.Translate(Vector3.right * h * horizontalSpeed * Time.deltaTime);
     }
 
-    public override void OnEpisodeBegin()
+    private void OnCollisionEnter(Collision collision)
     {
-        this.transform.localPosition = new Vector3(-4, 0.5f, -4);
-        agentRb.velocity = Vector3.zero;
-
-        target.localPosition = new Vector3(Random.Range(-4, 4), 0.5f, Random.Range(-4, 4));
-    }
-
-    public override void CollectObservations(VectorSensor sensor)
-    {
-        sensor.AddObservation(this.transform.localPosition);
-        sensor.AddObservation(target.localPosition);
-        sensor.AddObservation(agentRb.velocity.x);
-        sensor.AddObservation(agentRb.velocity.z);
-    }
-
-    public override void OnActionReceived(ActionBuffers actions)
-    {
-        float moveX = actions.ContinuousActions[0];
-        float moveZ = actions.ContinuousActions[1];
-
-        Vector3 move = new Vector3(moveX, 0, moveZ);
-        agentRb.AddForce(move * 10f);
-
-        float distanceToTarget = Vector3.Distance(this.transform.localPosition, target.localPosition);
-
-        if (distanceToTarget < 1.5f)
+        if (collision.gameObject.CompareTag("Obstacle"))
         {
-            SetReward(1.0f);
-            EndEpisode();
+            FindObjectOfType<GameOverHandler>().TriggerGameOver();
         }
+    }
+}
 
-        AddReward(-0.001f);
+```
+scoremanager.cs
+```
+using UnityEngine;
+using TMPro;
+
+public class ScoreManager : MonoBehaviour
+{
+    public TextMeshProUGUI scoreText;
+    private int score;
+    private bool isGameOver = false;
+
+    void Start()
+    {
+        score = 0;
+        InvokeRepeating("IncreaseScore", 1f, 1f);
     }
 
-    public override void Heuristic(in ActionBuffers actionsOut)
+    void IncreaseScore()
     {
-        var continuousActionsOut = actionsOut.ContinuousActions;
-        continuousActionsOut[0] = Input.GetAxis("Horizontal");
-        continuousActionsOut[1] = Input.GetAxis("Vertical");
+        if (!isGameOver)
+        {
+            score++;
+            scoreText.text = "Score: " + score.ToString();
+        }
+    }
+
+    public void StopScoring()
+    {
+        isGameOver = true;
     }
 }
 ```
-### Output:
+Game overhandler.cs
+```
+using UnityEngine;
 
-![Mini project Output](https://github.com/user-attachments/assets/60cc6f30-9bc5-401a-b12c-bacfd06bd71b)
+public class GameOverHandler : MonoBehaviour
+{
+    public GameObject gameOverPanel;
+
+    void Start()
+    {
+        gameOverPanel.SetActive(false);
+    }
+
+    public void TriggerGameOver()
+    {
+        gameOverPanel.SetActive(true);
+        Time.timeScale = 0f;
+        FindObjectOfType<ScoreManager>().StopScoring();
+    }
+}
+
+```
+obstaclespawner:
+```
+using UnityEngine;
+
+public class ObstacleSpawner : MonoBehaviour
+{
+    public GameObject obstaclePrefab;
+    public float spawnInterval = 2f;
+    public float xRange = 8f;
+    public float zSpawn = 30f;
+
+    void Start()
+    {
+        InvokeRepeating("SpawnObstacle", 2f, spawnInterval);
+    }
+
+    void SpawnObstacle()
+    {
+        Vector3 spawnPos = new Vector3(Random.Range(-xRange, xRange), 0f, zSpawn);
+        Instantiate(obstaclePrefab, spawnPos, Quaternion.identity);
+    }
+}
+
+```
+
+### Output:
+![image](https://github.com/user-attachments/assets/e0f861e5-f85c-4e27-9408-a608770d6f97)
+
+![image](https://github.com/user-attachments/assets/c01db7af-8cba-41c3-9fbf-5d016f309847)
+
 
 
 ### Result:
-The AI agent was trained using Unity ML-Agents to navigate a 3D maze environment. With reinforcement learning principles, it learned to reach the target effectively, demonstrating successful AI navigation implementation in Unity.
-
+Thus the game was developed using Unity and done successfully.
